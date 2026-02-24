@@ -1,0 +1,43 @@
+name: Reusable CD - Deploy to Amazon ECS
+
+on:
+  workflow_call:
+    inputs:
+      aws-region:
+        description: 'AWS Region'
+        required: false
+        type: string
+        default: 'us-east-1'
+      cf-stack-name:
+        description: 'CloudFormation Stack name'
+        required: true
+        type: string
+      runner-label:
+        description: 'Custom runner label pattern'
+        required: false
+        type: string
+        default: 'codebuild-shared-workflow'
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on:
+      - ${{ inputs.runner-label }}-${{ github.run_id }}-${{ github.run_attempt }}
+    
+    permissions:
+      contents: read
+      id-token: write
+
+      - name: Update CloudFormation Stack
+        id: update-stack
+        run: |
+          
+          aws cloudformation deploy \
+            --template-file iac/aws/us-east-1/vpc.yaml \
+            --stack-name "${{ inputs.cf-stack-name }}" \
+            --region "${{ inputs.aws-region }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+
+          
+          echo "✅ CloudFormation stack updated successfully" 
