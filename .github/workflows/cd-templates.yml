@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
+    steps:
       - name: Update CloudFormation Stack
         id: update-stack
         run: |
