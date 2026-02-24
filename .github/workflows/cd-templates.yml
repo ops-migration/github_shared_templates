@@ -28,12 +28,15 @@ jobs:
       contents: read
       id-token: none
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
       - name: Update CloudFormation Stack
         id: update-stack
         run: |
           
           aws cloudformation deploy \
-            --template-file /iac/aws/us-east-1/vpc.yaml \
+            --template-file iac/aws/us-east-1/vpc.yaml \
             --stack-name "${{ inputs.cf-stack-name }}" \
             --region "${{ inputs.aws-region }}" \
             --capabilities CAPABILITY_NAMED_IAM
