@@ -23,7 +23,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to ECS
+    name: Deploying Templates
     runs-on:
       - ${{ inputs.runner-label }}-${{ github.run_id }}-${{ github.run_attempt }}
     
