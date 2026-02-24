@@ -33,7 +33,7 @@ jobs:
         run: |
           
           aws cloudformation deploy \
-            --template-file iac/aws/us-east-1/vpc.yaml \
+            --template-file /iac/aws/us-east-1/vpc.yaml \
             --stack-name "${{ inputs.cf-stack-name }}" \
             --region "${{ inputs.aws-region }}" \
             --capabilities CAPABILITY_NAMED_IAM
