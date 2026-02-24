@@ -41,5 +41,11 @@ jobs:
             --region "${{ inputs.aws-region }}" \
             --capabilities CAPABILITY_NAMED_IAM
 
+          aws cloudformation deploy \
+            --template-file iac/aws/us-east-1/ecs.yaml \
+            --stack-name "${{ inputs.cf-stack-name }}" \
+            --region "${{ inputs.aws-region }}" \
+            --capabilities CAPABILITY_NAMED_IAM            
+
           
           echo "✅ CloudFormation stack updated successfully" 
