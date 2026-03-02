@@ -11,7 +11,7 @@ on:
         description: 'Custom runner label pattern'
         required: false
         type: string
-        default: 'shared-workflow'
+        default: 'shared_workflow'
 
 jobs:
   deploy:
