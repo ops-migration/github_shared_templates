@@ -21,7 +21,7 @@ on:
         description: 'Custom runner label pattern'
         required: false
         type: string
-        default: 'codebuild-shared-workflow'
+        default: 'codebuild-ecs-workflow'
       sonar-enabled:
         description: 'Enable SonarQube scanning'
         required: false
