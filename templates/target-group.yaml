@@ -6,6 +6,11 @@ Parameters:
     Type: String
   VpcId:
     Type: String
+
+  ALBHTTPListenerArn:  # ✅ NEW: Required parameter
+    Type: AWS::ElasticLoadBalancingV2::Listener::Arn
+    Description: ARN of the ALB HTTP Listener from ALB stack
+
   
   # ── FunctionManager ───────────────────────────────────────────────────────────────────
   FunctionManagerName:
@@ -68,7 +73,7 @@ Resources:
   FunctionManagerListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: {{resolve:ssm:/cfn/alb/HTTPListenerArn}}
+      ListenerArn: !Ref ALBHTTPListenerArn
       Priority: !Ref FunctionManagerRulePriority
       Conditions:
         - Field: host-header
@@ -110,7 +115,7 @@ Resources:
   AcquiflowListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: {{resolve:ssm:/cfn/alb/HTTPListenerArn}}
+      ListenerArn: !Ref ALBHTTPListenerArn
       Priority: !Ref AcquiflowRulePriority
       Conditions:
         - Field: host-header
