@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  deploy-cloudformation:
+  cf-push-templates-to-s3:
     runs-on:
       - codebuild-ecs-workflow-${{ github.run_id }}-${{ github.run_attempt }}
     
