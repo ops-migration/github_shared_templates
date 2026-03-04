@@ -176,8 +176,8 @@ Outputs:
     Export:
       Name: !Sub ${AWS::StackName}-ALBTargetGroupArn
 
-  ALBHTTPListenerArn:  # ✅ NEW: Export for target-group stack
+  ALBHTTPListenerArn:          # ← Add this new output
     Description: ALB HTTP Listener ARN
     Value: !Ref ALBHTTPListener
     Export:
-      Name: !Sub ${AWS::StackName}-HTTPListenerArn
+      Name: !Sub ${AWS::StackName}-ALBHTTPListenerArn      

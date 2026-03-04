@@ -9,8 +9,7 @@ Resources:
   FunctionManagerS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: ${Environment}-function-manager
-      AccessControl: Private
+      BucketName: !Sub ${Environment}-function-manager
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -29,8 +28,7 @@ Resources:
   AcquiflowS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: ${Environment}-acquiflow
-      AccessControl: Private
+      BucketName: !Sub ${Environment}-acquiflow
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
