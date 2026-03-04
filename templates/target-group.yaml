@@ -8,8 +8,7 @@ Parameters:
     Type: String
   ALBListenerArn:
     Type: String
-    Default: '{{resolve:ssm:/cfn/alb/HTTPListenerArn}}'
-
+  
   # ── FunctionManager ───────────────────────────────────────────────────────────────────
   FunctionManagerName:
     Type: String
