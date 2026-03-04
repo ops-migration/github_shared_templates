@@ -14,8 +14,10 @@ Parameters:
   # ── FunctionManager ───────────────────────────────────────────────────────────────────
   FunctionManagerName:
     Type: String
+    Default: FunctionManager
   FunctionManagerHostHeader:
     Type: String
+    Default: functionmanager.example.com
   FunctionManagerTargetPort:
     Type: Number
     Default: 80
@@ -26,8 +28,10 @@ Parameters:
   # ── Acquiflow ───────────────────────────────────────────────────────────────────
   AcquiflowName:
     Type: String
+    Default: Acquiflow
   AcquiflowHostHeader:
     Type: String
+    Default: Acquiflow.example.com
   AcquiflowTargetPort:
     Type: Number
     Default: 3000
