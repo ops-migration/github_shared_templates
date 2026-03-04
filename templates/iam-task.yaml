@@ -24,7 +24,7 @@ Resources:
             'Fn::Transform':
               Name: AWS::Include
               Parameters:
-                Location: 's3://my-bucket/task-policy.json'
+                Location: 's3://ecs-migration-cloud-formation-templates/policies/iam-function-manager-task-policy.json'
 
   AcquiflowECSTaskRole:
     Type: AWS::IAM::Role
@@ -43,7 +43,7 @@ Resources:
             'Fn::Transform':
               Name: AWS::Include
               Parameters:
-                Location: 's3://my-bucket/task-policy-2.json'
+                Location: 's3://ecs-migration-cloud-formation-templates/policies/iam-acquiflow-task-policy.json'
 
 # ── SSM Parameter Store ────────────────────────────────────────────────────
   FunctionManagerSSMTaskRoleArn:

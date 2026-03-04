@@ -6,7 +6,6 @@ Parameters:
     Type: String
   VpcId:
     Type: String
-    Default: '{{resolve:ssm:/cfn/vpc/VpcId}}'
   ALBListenerArn:
     Type: String
     Default: '{{resolve:ssm:/cfn/alb/HTTPListenerArn}}'
