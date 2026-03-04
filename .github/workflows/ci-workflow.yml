@@ -22,11 +22,6 @@ on:
         required: false
         type: string
         default: 'codebuild-ecs-workflow'
-      sonar-enabled:
-        description: 'Enable SonarQube scanning'
-        required: false
-        type: boolean
-        default: true
       target-branch:
         description: 'Target branch for config update PR'
         required: false
@@ -44,10 +39,6 @@ on:
         default: './nginx'
 
     secrets:
-      SONAR_TOKEN:
-        required: false
-      SONAR_HOST_URL:
-        required: false
       PAT_TOKEN:
         required: true
 
@@ -114,15 +105,6 @@ jobs:
         run: |
           echo "Running unit tests..."
           echo "✅ Unit tests completed successfully"
-
-      - name: SonarQube Scan
-        if: inputs.sonar-enabled == true
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: |
-          echo "Running SonarQube analysis..."
-          echo "✅ SonarQube scan completed successfully"
 
       # ── Rails image (always built) ───────────────────────────────────────────
       - name: Build Rails Docker image
