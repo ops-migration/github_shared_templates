@@ -52,6 +52,8 @@ Resources:
               Value: !Ref Environment
             - Name: PORT
               Value: !Sub "${RailsContainerPort}"
+            - Name: SECRET_KEY_BASE
+              Value: 'dummy_secret_key_base_for_dev_only_replace_later'  
           LogConfiguration:
             LogDriver: awslogs
             Options:
