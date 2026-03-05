@@ -49,7 +49,7 @@ Resources:
               Protocol: tcp
           Environment:
             - Name: RAILS_ENV
-              Value: !Ref Environment
+              Value: 'development'
             - Name: PORT
               Value: !Sub "${RailsContainerPort}"
             - Name: SECRET_KEY_BASE
