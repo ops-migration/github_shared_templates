@@ -8,7 +8,7 @@ Parameters:
     Type: String
 
   ALBHTTPListenerArn:  # ✅ NEW: Required parameter
-    Type: AWS::ElasticLoadBalancingV2::Listener::Arn
+    Type: String
     Description: ARN of the ALB HTTP Listener from ALB stack
 
   
