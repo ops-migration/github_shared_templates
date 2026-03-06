@@ -11,7 +11,7 @@ on:
         description: 'Path to the folder containing stack YAML files'
         required: false
         type: string
-        default: 'iac/aws/us-east-1/'
+        default: 'iac/aws/us-east-1'
 
 jobs:
   deploy:
@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
 
       - name: Get changed stack files
         id: changes
