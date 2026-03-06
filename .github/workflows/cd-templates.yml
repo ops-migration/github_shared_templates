@@ -12,6 +12,10 @@ on:
         required: false
         type: string
         default: 'iac/aws/us-east-1'
+    secrets:
+      github-token:
+        description: 'GitHub token to checkout the caller repo'
+        required: true
 
 jobs:
   deploy:
@@ -24,15 +28,18 @@ jobs:
       id-token: none
 
     steps:
-      - name: Checkout repository
+      # ✅ Checkout the CALLER's repo (core-infrastructure), not this shared repo
+      - name: Checkout caller repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0                  # full history — required for HEAD~1
+          repository: ${{ github.repository }}   # core-infrastructure
+          ref: ${{ github.sha }}                  # exact commit that triggered
+          token: ${{ secrets.github-token }}
+          fetch-depth: 0                          # full history for git diff
 
       - name: Get changed stack files
         id: changes
         run: |
-          # Check if this is the very first commit on the branch
           if git rev-parse HEAD~1 > /dev/null 2>&1; then
             echo "Comparing HEAD~1 → HEAD"
             CHANGED=$(git diff --name-only HEAD~1 HEAD \
@@ -46,7 +53,6 @@ jobs:
           fi
 
           echo "Changed files: $CHANGED"
-
           echo "changed<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED"     >> $GITHUB_OUTPUT
           echo "EOF"          >> $GITHUB_OUTPUT
@@ -55,6 +61,11 @@ jobs:
         if: steps.changes.outputs.changed != ''
         run: |
           for f in ${{ steps.changes.outputs.changed }}; do
+            if [ ! -f "$f" ]; then
+              echo "⚠️  Skipping $f — file no longer exists"
+              continue
+            fi
+
             filename=$(basename "$f" .yaml)
             stack_name="${{ inputs.environment }}-${filename}"
 
