@@ -10,6 +10,9 @@ on:
         required: false
         type: string
         default: 'iac/aws/us-east-1/stacks'
+      stack-name:
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -25,7 +28,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0              # ← full history required for git diff
+          fetch-depth: 0
 
       - name: Get changed stack files
         id: changes
@@ -75,4 +78,4 @@ jobs:
 
       - name: No changes detected
         if: steps.changes.outputs.changed == ''
-        run: echo "ℹ️ No stack files changed — nothing to deploy"
+        run: echo "No stack files changed — nothing to deploy"
