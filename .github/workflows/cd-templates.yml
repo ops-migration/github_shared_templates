@@ -27,32 +27,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0                  # full history — required for HEAD~1
 
       - name: Get changed stack files
         id: changes
         run: |
-          BEFORE="${{ github.event.before }}"
-          AFTER="${{ github.sha }}"
-
-          if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
-            echo "First push detected — deploying all stack files"
-            CHANGED=$(find "${{ inputs.stacks-path }}" -name "*.yaml" | tr '\n' ' ')
-          else
-            # Convert newlines to spaces so it's a single-line space-separated list
-            CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" \
+          # Check if this is the very first commit on the branch
+          if git rev-parse HEAD~1 > /dev/null 2>&1; then
+            echo "Comparing HEAD~1 → HEAD"
+            CHANGED=$(git diff --name-only HEAD~1 HEAD \
               | grep "^${{ inputs.stacks-path }}/.*\.yaml$" \
               | tr '\n' ' ' \
               || true)
+          else
+            echo "First commit on branch — deploying all stack files"
+            CHANGED=$(find "${{ inputs.stacks-path }}" -name "*.yaml" \
+              | tr '\n' ' ')
           fi
 
           echo "Changed files: $CHANGED"
 
-          # ✅ Correct multiline-safe way to write to GITHUB_OUTPUT
           echo "changed<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED"     >> $GITHUB_OUTPUT
           echo "EOF"          >> $GITHUB_OUTPUT
-
 
       - name: Deploy changed stacks
         if: steps.changes.outputs.changed != ''
