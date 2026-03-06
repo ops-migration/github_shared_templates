@@ -1,40 +1,64 @@
-name: Reusable CD - Deploy to Amazon ECS
+name: Reusable CD - Deploy CloudFormation Stacks
 
 on:
   workflow_call:
-    inputs:       
-      cf-stack-name:
-        description: 'CloudFormation Stack name'
+    inputs:
+      environment:
+        description: 'Deployment environment (dev, qa, prod)'
         required: true
         type: string
-      runner-label:
-        description: 'Custom runner label pattern'
+      stacks-path:
+        description: 'Path to the folder containing stack YAML files'
         required: false
         type: string
-        default: 'codebuild-ecs-workflow'
+        default: 'iac/aws/us-east-1/'
 
 jobs:
   deploy:
-    name: Deploying Templates
+    name: Deploying CloudFormation Stacks
     runs-on:
-      - ${{ inputs.runner-label }}-${{ github.run_id }}-${{ github.run_attempt }}
-    
+      - codebuild-ecs-workflow-${{ github.run_id }}-${{ github.run_attempt }}
+
     permissions:
       contents: read
       id-token: none
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
-      - name: Update CloudFormation Stack
-        id: update-stack
-        run: |
-          
-          aws cloudformation deploy \
-            --template-file iac/aws/us-east-1/stack.yaml \
-            --stack-name "${{ inputs.cf-stack-name }}" \
-            --region "us-east-1" \
-            --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+        with:
+          fetch-depth: 2          # needed for git diff to work
 
-        
-          echo "✅ CloudFormation stack updated successfully" 
+      - name: Get changed stack files
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+            | grep "^${{ inputs.stacks-path }}/.*\.yaml$" \
+            || true)
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed files: $CHANGED"
+
+      - name: Deploy changed stacks
+        if: steps.changes.outputs.changed != ''
+        run: |
+          for f in ${{ steps.changes.outputs.changed }}; do
+            filename=$(basename "$f" .yaml)
+            stack_name="${{ inputs.environment }}-stack"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Deploying: $f → Stack: $stack_name"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            aws cloudformation deploy \
+              --template-file "$f" \
+              --stack-name "$stack_name" \
+              --region "us-east-1" \
+              --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+              --no-fail-on-empty-changeset
+
+            echo "✅ $stack_name deployed successfully"
+          done
+
+      - name: No changes detected
+        if: steps.changes.outputs.changed == ''
+        run: echo "ℹ️ No stack files changed — nothing to deploy"
