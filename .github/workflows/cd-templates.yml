@@ -60,19 +60,19 @@ jobs:
         run: |
           for f in ${{ steps.changes.outputs.changed }}; do
             filename=$(basename "$f" .yaml)
-            
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Deploying: $f  →  Stack: $stack_name"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
             aws cloudformation deploy \
               --template-file "$f" \
-              --stack-name "$stack_name" \
+              --stack-name "$stack-name" \
               --region "us-east-1" \
               --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
               --no-fail-on-empty-changeset
 
-            echo "✅ $stack_name deployed successfully"
+            echo "✅ $stack-name deployed successfully"
           done
 
       - name: No changes detected
