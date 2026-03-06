@@ -35,18 +35,24 @@ jobs:
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.sha }}"
 
-          # First push to a branch — before SHA is all zeros
           if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
             echo "First push detected — deploying all stack files"
             CHANGED=$(find "${{ inputs.stacks-path }}" -name "*.yaml" | tr '\n' ' ')
           else
+            # Convert newlines to spaces so it's a single-line space-separated list
             CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" \
               | grep "^${{ inputs.stacks-path }}/.*\.yaml$" \
+              | tr '\n' ' ' \
               || true)
           fi
 
-          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
           echo "Changed files: $CHANGED"
+
+          # ✅ Correct multiline-safe way to write to GITHUB_OUTPUT
+          echo "changed<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED"     >> $GITHUB_OUTPUT
+          echo "EOF"          >> $GITHUB_OUTPUT
+
 
       - name: Deploy changed stacks
         if: steps.changes.outputs.changed != ''
