@@ -9,10 +9,7 @@ on:
       stacks-path:
         required: false
         type: string
-        default: 'iac/aws/us-east-1'
-    secrets:
-      github-token:
-        required: true
+        default: 'iac/aws/us-east-1/stacks'
 
 jobs:
   deploy:
@@ -25,44 +22,40 @@ jobs:
       id-token: none
 
     steps:
-      - name: Checkout caller repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          token: ${{ secrets.github-token }}
-          fetch-depth: 1
+          fetch-depth: 1              # ← full history required for git diff
 
-      - name: Detect and deploy changed stacks
-        env:
-          GH_TOKEN: ${{ secrets.github-token }}
+      - name: Get changed stack files
+        id: changes
         run: |
-          REPO="${{ github.repository }}"
-          SHA="${{ github.sha }}"
-          STACKS_PATH="${{ inputs.stacks-path }}"
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
 
-          echo "Fetching changed files for commit: $SHA"
-
-          # ✅ Use GitHub API — always returns the full file list regardless of commit size
-          CHANGED=$(gh api repos/$REPO/commits/$SHA \
-            --jq '.files[] | select(.status != "removed") | .filename' \
-            | grep "^${STACKS_PATH}/.*\.yaml$" \
-            | tr '\n' ' ' \
-            || true)
+          if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            echo "First push detected — deploying all stack files"
+            CHANGED=$(find "${{ inputs.stacks-path }}" -name "*.yaml" | tr '\n' ' ')
+          else
+            # Convert newlines to spaces so it's a single-line space-separated list
+            CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" \
+              | grep "^${{ inputs.stacks-path }}/.*\.yaml$" \
+              | tr '\n' ' ' \
+              || true)
+          fi
 
           echo "Changed files: $CHANGED"
 
-          if [ -z "$CHANGED" ]; then
-            echo "ℹ️ No stack files changed — nothing to deploy"
-            exit 0
-          fi
+          # ✅ Correct multiline-safe way to write to GITHUB_OUTPUT
+          echo "changed<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED"     >> $GITHUB_OUTPUT
+          echo "EOF"          >> $GITHUB_OUTPUT
 
-          for f in $CHANGED; do
-            if [ ! -f "$f" ]; then
-              echo "⚠️  Skipping $f — file not found"
-              continue
-            fi
 
+      - name: Deploy changed stacks
+        if: steps.changes.outputs.changed != ''
+        run: |
+          for f in ${{ steps.changes.outputs.changed }}; do
             filename=$(basename "$f" .yaml)
             stack_name="${{ inputs.environment }}-${filename}"
 
@@ -79,3 +72,7 @@ jobs:
 
             echo "✅ $stack_name deployed successfully"
           done
+
+      - name: No changes detected
+        if: steps.changes.outputs.changed == ''
+        run: echo "ℹ️ No stack files changed — nothing to deploy"
