@@ -25,7 +25,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1              # ← full history required for git diff
+          fetch-depth: 0              # ← full history required for git diff
 
       - name: Get changed stack files
         id: changes
