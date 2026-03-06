@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: ECS Service Stack - EC2 launch type with CPU and Memory Service Auto Scaling
+Description: ECS Service Stack - Target Group, Listener Rule, ECS Service, and Auto Scaling
 
 Parameters:
   Environment:
@@ -10,20 +10,35 @@ Parameters:
     Type: String
   TaskDefinitionArn:
     Type: String
-  TargetGroupArn:
-    Type: String
   ContainerName:
     Type: String
     Description: Container name to register with the target group (nginx or rails)
   ContainerPort:
     Type: Number
     Default: 80
+  VpcId:
+    Type: String
   VpcSubnetIds:
     Type: CommaDelimitedList
-    Description: Subnets for the ECS service ENIs
   SecurityGroupIds:
     Type: CommaDelimitedList
-    Description: Security groups for the ECS service ENIs
+
+  # ── Target Group + Listener Rule ──────────────────────────────────────────
+  ALBHTTPListenerArn:
+    Type: String
+    Description: ARN of the ALB HTTP Listener
+  AppHostHeader:
+    Type: String
+    Description: Host header for listener rule (e.g. functionmanager.example.com)
+  TargetPort:
+    Type: Number
+    Default: 80
+    Description: Port the target group forwards traffic to
+  ListenerRulePriority:
+    Type: Number
+    Description: Unique priority for the ALB listener rule (e.g. 100, 101)
+
+  # ── Scaling ───────────────────────────────────────────────────────────────
   DesiredCount:
     Type: Number
     Default: 1
@@ -48,9 +63,53 @@ Parameters:
 
 Resources:
 
+  # ── Target Group ──────────────────────────────────────────────────────────
+  AppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${Environment}-${AppName}-tg
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: !Ref TargetPort
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${AppName}-tg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: AppName
+          Value: !Ref AppName
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ── Listener Rule ─────────────────────────────────────────────────────────
+  AppListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ALBHTTPListenerArn
+      Priority: !Ref ListenerRulePriority
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+              - !Ref AppHostHeader
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref AppTargetGroup
+
   # ── ECS Service ────────────────────────────────────────────────────────────
   ECSService:
     Type: AWS::ECS::Service
+    DependsOn: AppListenerRule        # ← must exist before service registers
     Properties:
       ServiceName: !Sub ${Environment}-${AppName}-service
       Cluster: !Ref ECSClusterName
@@ -63,7 +122,7 @@ Resources:
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true
-      NetworkConfiguration:                        
+      NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets: !Ref VpcSubnetIds
@@ -71,15 +130,17 @@ Resources:
       LoadBalancers:
         - ContainerName: !Ref ContainerName
           ContainerPort: !Ref ContainerPort
-          TargetGroupArn: !Ref TargetGroupArn
+          TargetGroupArn: !Ref AppTargetGroup   # ← references TG created above
       HealthCheckGracePeriodSeconds: 60
       Tags:
         - Key: Name
           Value: !Sub ${Environment}-${AppName}-service
         - Key: Environment
           Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
 
-  # ── Auto Scaling — IAM Role ────────────────────────────────────────────────
+  # ── Auto Scaling IAM Role ──────────────────────────────────────────────────
   ServiceAutoScalingRole:
     Type: AWS::IAM::Role
     Properties:
@@ -106,7 +167,7 @@ Resources:
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
 
-  # ── Scale Out Policy — CPU ─────────────────────────────────────────────────
+  # ── CPU Scale Out ──────────────────────────────────────────────────────────
   CPUScaleOutPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -128,7 +189,6 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub ${Environment}-${AppName}-cpu-high
-      AlarmDescription: Scale out when CPU > threshold
       Namespace: AWS/ECS
       MetricName: CPUUtilization
       Dimensions:
@@ -144,7 +204,7 @@ Resources:
       AlarmActions:
         - !Ref CPUScaleOutPolicy
 
-  # ── Scale In Policy — CPU ──────────────────────────────────────────────────
+  # ── CPU Scale In ───────────────────────────────────────────────────────────
   CPUScaleInPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -163,7 +223,6 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub ${Environment}-${AppName}-cpu-low
-      AlarmDescription: Scale in when CPU < threshold
       Namespace: AWS/ECS
       MetricName: CPUUtilization
       Dimensions:
@@ -179,7 +238,7 @@ Resources:
       AlarmActions:
         - !Ref CPUScaleInPolicy
 
-  # ── Scale Out Policy — Memory ──────────────────────────────────────────────
+  # ── Memory Scale Out ───────────────────────────────────────────────────────
   MemoryScaleOutPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -198,7 +257,6 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub ${Environment}-${AppName}-memory-high
-      AlarmDescription: Scale out when Memory > threshold
       Namespace: AWS/ECS
       MetricName: MemoryUtilization
       Dimensions:
@@ -214,7 +272,7 @@ Resources:
       AlarmActions:
         - !Ref MemoryScaleOutPolicy
 
-  # ── Scale In Policy — Memory ───────────────────────────────────────────────
+  # ── Memory Scale In ────────────────────────────────────────────────────────
   MemoryScaleInPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -233,7 +291,6 @@ Resources:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub ${Environment}-${AppName}-memory-low
-      AlarmDescription: Scale in when Memory < threshold
       Namespace: AWS/ECS
       MetricName: MemoryUtilization
       Dimensions:
@@ -249,38 +306,36 @@ Resources:
       AlarmActions:
         - !Ref MemoryScaleInPolicy
 
-# ── SSM Parameter Store ────────────────────────────────────────────────────
+  # ── SSM Parameters ─────────────────────────────────────────────────────────
+  SSMTargetGroupArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /cfn/${Environment}/${AppName}/elb/TargetGroupArn
+      Type: String
+      Value: !Ref AppTargetGroup
+      Tags:
+        Environment: !Ref Environment
+        AppName: !Ref AppName
+        ManagedBy: CloudFormation
+
   SSMEcsServiceName:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub /cfn/${Environment}/ecs/${AppName}/ServiceName
       Type: String
       Value: !GetAtt ECSService.Name
-      Description: !Sub "[${Environment}] ECS Service Name for ${AppName}"
       Tags:
         Environment: !Ref Environment
-        ManagedBy: CloudFormation
         AppName: !Ref AppName
-
-  SSMEcsServiceArn:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /cfn/${Environment}/ecs/${AppName}/ServiceArn
-      Type: String
-      Value: !Ref ECSService
-      Description: !Sub "[${Environment}] ECS Service ARN for ${AppName}"
-      Tags:
-        Environment: !Ref Environment
         ManagedBy: CloudFormation
-        AppName: !Ref AppName
 
 Outputs:
   ECSServiceName:
-    Description: ECS Service Name
     Value: !GetAtt ECSService.Name
     Export:
       Name: !Sub ${AWS::StackName}-ECSServiceName
 
-  ScalableTargetId:
-    Description: Auto Scaling Target Resource ID
-    Value: !Sub service/${ECSClusterName}/${Environment}-${AppName}-service
+  TargetGroupArn:
+    Value: !Ref AppTargetGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-TargetGroupArn

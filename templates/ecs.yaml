@@ -21,11 +21,9 @@ Parameters:
     Description: EC2 instance type for ECS container instances
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
-
-Mappings:
-  AWSRegionToAMI:
-    us-east-1:
-      AMIID: ami-0aae19d30bab785d3
+  AmiId:                          # ← NEW: passed from child stack
+    Type: AWS::EC2::Image::Id
+    Description: ECS-optimized AMI ID for the region and architecture
 
 Resources:
 
@@ -127,7 +125,7 @@ Resources:
     Properties:
       LaunchTemplateName: !Sub ${Environment}-ecs-launch-template
       LaunchTemplateData:
-        ImageId: !FindInMap [AWSRegionToAMI, !Ref AWS::Region, AMIID]
+        ImageId: !Ref AmiId
         InstanceType: !Ref InstanceType
         KeyName: !Ref KeyPairName
         IamInstanceProfile:
